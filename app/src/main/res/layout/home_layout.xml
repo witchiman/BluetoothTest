@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+   <FrameLayout
+       android:id="@+id/connect_layout"
+       android:background="#5c4"
+       android:layout_width="match_parent"
+       android:layout_height="0dp"
+       android:layout_weight="1">
+       <ProgressBar
+           android:id="@+id/progressbar"
+           android:max="200"
+           android:progress="0"
+           android:layout_gravity="right"
+           android:visibility="invisible"
+           android:layout_width="wrap_content"
+           android:layout_height="wrap_content" />
+       <ListView
+           android:id="@+id/bt_list"
+           android:layout_width="match_parent"
+           android:layout_height="wrap_content"></ListView>
+   </FrameLayout>
+    <TableLayout
+        android:id="@+id/data_layout"
+        android:background="#5c4"
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" >
+        <TableRow >
+            <TextView
+                android:layout_marginTop="20dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:text="时间"
+                android:textSize="15sp"
+                android:background="@drawable/img_style" />
+            <EditText
+                android:text="暂无测量数据"
+                android:editable="false"
+                android:layout_marginTop="20dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:id="@+id/et_date"/>
+        </TableRow>
+        <TableRow >
+            <TextView
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:text="NDVI"
+                android:textSize="15sp"
+                android:background="@drawable/img_style" />
+            <EditText
+                android:id="@+id/et_ndvi"
+                android:editable="false"
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center" />
+        </TableRow>
+        <TableRow>
+            <TextView
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:text="LAI"
+                android:textSize="15sp"
+                android:background="@drawable/img_style" />
+            <EditText
+                android:editable="false"
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:id="@+id/et_lai"/>
+        </TableRow>
+        <TableRow>
+            <TextView
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:text="Biomass"
+                android:textSize="15sp"
+                android:background="@drawable/img_style" />
+            <EditText
+                android:editable="false"
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:id="@+id/et_biomass"/>
+        </TableRow>
+        <TableRow>
+            <TextView
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:text="CHL"
+                android:textSize="15sp"
+                android:background="@drawable/img_style" />
+            <EditText
+                android:editable="false"
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:id="@+id/et_chl"/>
+        </TableRow>
+        <TableRow>
+            <TextView
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:text="N含量"
+                android:textSize="15sp"
+                android:background="@drawable/img_style" />
+            <EditText
+                android:editable="false"
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:id="@+id/et_n"/>
+        </TableRow>
+        <TableRow>
+            <TextView
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:text="冠层高度"
+                android:textSize="12sp"
+                android:background="@drawable/img_style" />
+            <EditText
+                android:editable="false"
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:id="@+id/et_height"/>
+        </TableRow>
+        <TableRow>
+            <TextView
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:text="冠层温度"
+                android:textSize="12sp"
+                android:background="@drawable/img_style" />
+            <EditText
+                android:editable="false"
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:id="@+id/et_tobj"/>
+        </TableRow>
+        <TableRow>
+            <TextView
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:text="环境温度"
+                android:textSize="12sp"
+                android:background="@drawable/img_style" />
+            <EditText
+                android:editable="false"
+                android:layout_marginTop="3dp"
+                android:layout_marginLeft="30dp"
+                android:gravity="center"
+                android:id="@+id/et_tenv"/>
+        </TableRow>
+    </TableLayout>
+    <LinearLayout
+        android:layout_alignParentBottom="true"
+        android:background="#000"
+        android:layout_width="match_parent"
+        android:layout_height="80dp">
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_marginTop="5dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1">
+            <Button
+                android:id="@+id/button_connect"
+                android:text="连接"
+                android:textSize="25sp"
+                android:layout_gravity="center"
+                android:background="@drawable/img_style"
+                android:layout_width="70dp"
+                android:layout_height="35dp" />
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_marginTop="5dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1">
+            <Button
+                android:id="@+id/button_convey"
+                android:text="测量"
+                android:textSize="25sp"
+                android:layout_gravity="center"
+                android:background="@drawable/img_style"
+                android:layout_width="70dp"
+                android:layout_height="35dp" />
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_marginTop="5dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1">
+            <Button
+                android:id="@+id/button_save"
+                android:text="保存"
+                android:textSize="25sp"
+                android:background="@drawable/img_style"
+                android:layout_gravity="center"
+                android:layout_width="70dp"
+                android:layout_height="35dp" />
+        </FrameLayout>
+       <FrameLayout
+           android:layout_width="0dp"
+           android:layout_marginTop="5dp"
+           android:layout_height="match_parent"
+           android:layout_weight="1">
+           <Button
+               android:id="@+id/button_exit"
+               android:text="退出"
+               android:textSize="25sp"
+               android:background="@drawable/img_style"
+               android:layout_gravity="center"
+               android:layout_width="70dp"
+               android:layout_height="35dp" />
+       </FrameLayout>
+    </LinearLayout>
+</LinearLayout>
