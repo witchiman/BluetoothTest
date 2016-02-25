@@ -37,9 +37,8 @@
                 android:gravity="center"
                 android:text="时间"
                 android:textSize="15sp"
-                android:background="@drawable/img_style" />
+                android:background="@drawable/img_released" />
             <EditText
-                android:text="暂无测量数据"
                 android:editable="false"
                 android:layout_marginTop="20dp"
                 android:layout_marginLeft="30dp"
@@ -53,7 +52,7 @@
                 android:gravity="center"
                 android:text="NDVI"
                 android:textSize="15sp"
-                android:background="@drawable/img_style" />
+                android:background="@drawable/img_released" />
             <EditText
                 android:id="@+id/et_ndvi"
                 android:editable="false"
@@ -68,7 +67,7 @@
                 android:gravity="center"
                 android:text="LAI"
                 android:textSize="15sp"
-                android:background="@drawable/img_style" />
+                android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"
                 android:layout_marginTop="3dp"
@@ -83,7 +82,7 @@
                 android:gravity="center"
                 android:text="Biomass"
                 android:textSize="15sp"
-                android:background="@drawable/img_style" />
+                android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"
                 android:layout_marginTop="3dp"
@@ -98,7 +97,7 @@
                 android:gravity="center"
                 android:text="CHL"
                 android:textSize="15sp"
-                android:background="@drawable/img_style" />
+                android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"
                 android:layout_marginTop="3dp"
@@ -113,7 +112,7 @@
                 android:gravity="center"
                 android:text="N含量"
                 android:textSize="15sp"
-                android:background="@drawable/img_style" />
+                android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"
                 android:layout_marginTop="3dp"
@@ -128,7 +127,7 @@
                 android:gravity="center"
                 android:text="冠层高度"
                 android:textSize="12sp"
-                android:background="@drawable/img_style" />
+                android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"
                 android:layout_marginTop="3dp"
@@ -143,7 +142,7 @@
                 android:gravity="center"
                 android:text="冠层温度"
                 android:textSize="12sp"
-                android:background="@drawable/img_style" />
+                android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"
                 android:layout_marginTop="3dp"
@@ -158,7 +157,7 @@
                 android:gravity="center"
                 android:text="环境温度"
                 android:textSize="12sp"
-                android:background="@drawable/img_style" />
+                android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"
                 android:layout_marginTop="3dp"
