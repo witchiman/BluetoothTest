@@ -4,23 +4,21 @@ import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
-import android.bluetooth.BluetoothSocket;
+import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.nfc.NfcAdapter;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -31,16 +29,10 @@ import android.widget.ProgressBar;
 import android.widget.TableLayout;
 import android.widget.Toast;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -103,11 +95,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ProgressBar progressBar;
     private String response = "";
 
-    private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+    private static final UUID MY_UUID = UUID.fromString("49535343-fe7d-4ae5-8fa9-9fafd205e455");
 
     private BluetoothDevice selectedDevice;
     private boolean isConnected = false; //用于标记是否连接成功
     private boolean isChoose = false; //用于标记是否在搜索完成前进行了选择
+    private Handler handler;
+    private ScanCallback leCallback;
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
     @Override
@@ -158,6 +152,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         /*隐式打开蓝牙*/
         if (!bluetoothAdapter.isEnabled()) {
             bluetoothAdapter.enable();
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            leCallback = new ScanCallback() {
+                @Override
+                public void onScanResult(int callbackType, ScanResult result) {
+                    super.onScanResult(callbackType, result);
+                }
+
+                @Override
+                public void onBatchScanResults(List<ScanResult> results) {
+                    super.onBatchScanResults(results);
+                    for (ScanResult result : results) {
+                        BluetoothDevice device = null;
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            device = result.getDevice();
+                        }
+                        devices.add(device);
+                        deviceNames.add(device.getName());
+                    }
+                    arrayAdapter.notifyDataSetChanged();
+                }
+
+                @Override
+                public void onScanFailed(int errorCode) {
+                    super.onScanFailed(errorCode);
+                    System.out.println("搜索失败");
+                }
+            };
         }
         scanBluetooth();
     }
@@ -213,51 +235,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     /*对蓝牙设备进行扫描*/
     private void scanBluetooth() {
-
-        /*首先检查是否有已经配对的设备*/
-        devices = bluetoothAdapter.getBondedDevices();
-        deviceNames.clear();
-        if (devices.size() > 0) {
-            for (BluetoothDevice device : devices) {
-                deviceNames.add(device.getName());
-            }
-            arrayAdapter.notifyDataSetChanged();
-        }
-
-       // receiver = new BluetoothReceiver();
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(BluetoothDevice.ACTION_FOUND);
-        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        // registerReceiver(receiver, filter);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             scanner = bluetoothAdapter.getBluetoothLeScanner();
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            scanner.startScan(new ScanCallback() {
-
+            scanner.startScan(leCallback) ;
+            handler.postDelayed(new Runnable() {
                 @Override
-                public void onScanResult(int callbackType, ScanResult result) {
-                    super.onScanResult(callbackType, result);
-                }
-
-                @Override
-                public void onBatchScanResults(List<ScanResult> results) {
-                    for(ScanResult result : results) {
-                        BluetoothDevice device = null;
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                            device = result.getDevice();
-                        }
-                        deviceNames.add(device.getName());
+                public void run() {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        scanner.stopScan(leCallback);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "搜索完成", Toast.LENGTH_SHORT).show();
+                                progressBar.cancelLongPress();
+                            }
+                        });
                     }
-                    arrayAdapter.notifyDataSetChanged();
                 }
+            }, 10000);
 
-                @Override
-                public void onScanFailed(int errorCode) {
-                    super.onScanFailed(errorCode);
-                    System.out.println("扫描失败");
-                }
-            });
+            scanner.startScan(leCallback);
+
         }
     }
 
@@ -267,7 +265,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Toast.makeText(MainActivity.this, "无连接", Toast.LENGTH_SHORT).show();
             return;
         }
-        sendForResult();
+        sendForResult("010400000003B00B");
         Date date = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yy年MM月dd日 HH:mm:ss");
         dateText = format.format(date);
@@ -316,7 +314,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             bw.write("目标温度:" + resultTobj + "\n");
             bw.write("环境温度:" + resultTenv + "\n");
             bw.flush();
-            Toast.makeText(MainActivity.this, "Save successfully", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "Save successfully", Toast.LENGTH_SHORT).show();
             bw.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -331,11 +329,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        isChoose = true;
-         /*如果检测还在搜索设备，则取消*/
-        if (bluetoothAdapter.isDiscovering()) {
-            bluetoothAdapter.cancelDiscovery();
-        }
         if (connectLayout.getVisibility() == View.VISIBLE) {
             connectLayout.setVisibility(View.GONE);
             dataLayout.setVisibility(View.VISIBLE);
@@ -360,8 +353,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         new Thread(new Runnable() {
             @Override
             public void run() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                    bluetoothGatt = device.connectGatt(MainActivity.this, false, new BluetoothGattCallback() {
 
-                isConnected = true;
+                        @Override
+                        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+                            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                                isConnected = true;
+                            }
+                        }
+                    });
+                }
 
                 if (isConnected) {
                     runOnUiThread(new Runnable() {
@@ -377,9 +379,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     /*向设备发送并接收返回数据*/
-    private void sendForResult() {
+    private void sendForResult(String request) {
+        BluetoothGattService service = null;
+        BluetoothGattCharacteristic characteristic = null;
+        boolean status = false;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            service = bluetoothGatt.getService(MY_UUID);
+            characteristic = service.getCharacteristic(MY_UUID);
+            characteristic.setValue(request.getBytes());
+            status = bluetoothGatt.writeCharacteristic(characteristic);
+        }
+        if (status) {
+            System.out.println("写入成功");
+        }
 
-            //把字符数组表示的十六进制转换成double格式
+        //把字符数组表示的十六进制转换成double格式
            if (!TextUtils.isEmpty(response)) {
                argR735 = parseHex(response, 6)/2750;
                argR690 = parseHex(response, 10)/2750;
