@@ -1,13 +1,21 @@
 package com.hui.bluetoothtest;
 
+import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothSocket;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanResult;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.nfc.NfcAdapter;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
@@ -82,22 +90,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private FrameLayout connectLayout;
     private TableLayout dataLayout;
 
+    private BluetoothManager bluetoothManager;
     private BluetoothAdapter bluetoothAdapter;
+    private BluetoothGatt bluetoothGatt;
+    private String deviceAddress;
     private List<String> deviceNames;
     private Set<BluetoothDevice> devices;
-    private BluetoothReceiver receiver;
+    //private BluetoothReceiver receiver;
     private ArrayAdapter<String> arrayAdapter;
+    BluetoothLeScanner scanner;
 
     private ProgressBar progressBar;
     private String response = "";
 
     private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    private BluetoothSocket socket;
     private BluetoothDevice selectedDevice;
     private boolean isConnected = false; //用于标记是否连接成功
     private boolean isChoose = false; //用于标记是否在搜索完成前进行了选择
 
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -131,8 +143,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         /*添加蓝牙列表的监听器*/
         btList.setOnItemClickListener(this);
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Toast.makeText(this,"该设备不支持BLE", Toast.LENGTH_SHORT).show();
+            finish();
+        }
 
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
+        bluetoothAdapter = bluetoothManager.getAdapter();
         if (bluetoothAdapter == null) {
             Toast.makeText(MainActivity.this, "蓝牙不可用", Toast.LENGTH_SHORT).show();
         }
@@ -207,12 +224,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             arrayAdapter.notifyDataSetChanged();
         }
 
-        receiver = new BluetoothReceiver();
+       // receiver = new BluetoothReceiver();
         IntentFilter filter = new IntentFilter();
         filter.addAction(BluetoothDevice.ACTION_FOUND);
         filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        registerReceiver(receiver, filter);
-        bluetoothAdapter.startDiscovery();
+        // registerReceiver(receiver, filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            scanner = bluetoothAdapter.getBluetoothLeScanner();
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            scanner.startScan(new ScanCallback() {
+
+                @Override
+                public void onScanResult(int callbackType, ScanResult result) {
+                    super.onScanResult(callbackType, result);
+                }
+
+                @Override
+                public void onBatchScanResults(List<ScanResult> results) {
+                    for(ScanResult result : results) {
+                        BluetoothDevice device = null;
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                            device = result.getDevice();
+                        }
+                        deviceNames.add(device.getName());
+                    }
+                    arrayAdapter.notifyDataSetChanged();
+                }
+
+                @Override
+                public void onScanFailed(int errorCode) {
+                    super.onScanFailed(errorCode);
+                    System.out.println("扫描失败");
+                }
+            });
+        }
     }
 
 
@@ -280,15 +326,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(receiver);
-        try {
-            if (socket != null) {
-                socket.close();
-            }
-        }catch (Exception e) {
-            e.printStackTrace();
-        }
-
+       // unregisterReceiver(receiver);
     }
 
     @Override
@@ -322,32 +360,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         new Thread(new Runnable() {
             @Override
             public void run() {
-                try {
 
-                    //socket = device.createRfcommSocketToServiceRecord(MY_UUID);
-                   /* if(socket != null) {
-                        Log.i("MainActivity","The address is " + socket.getRemoteDevice().getAddress());
-                    }*/
-                   /*通过反射得到BluetoothSocket*/
+                isConnected = true;
 
-                    Method method = device.getClass().getMethod("createRfcommSocket",new Class[]{int.class});
-                    socket = (BluetoothSocket) method.invoke(device,1);
-                    socket.connect();
-                    isConnected = true;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    try {
-                        socket.close();
-                    } catch (IOException e1) {
-                        e1.printStackTrace();
-                    }
-                } catch (NoSuchMethodException e) {
-                   e.printStackTrace();
-               } catch (InvocationTargetException e) {
-                   e.printStackTrace();
-               } catch (IllegalAccessException e) {
-                   e.printStackTrace();
-               }
                 if (isConnected) {
                     runOnUiThread(new Runnable() {
                         @Override
@@ -363,24 +378,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     /*向设备发送并接收返回数据*/
     private void sendForResult() {
-        OutputStream os = null;
-        InputStream is = null;
-        try {
-            os = socket.getOutputStream();
-            if(os != null) {
-                os.write("010400000003B00B".getBytes());
-                os.flush();
-            }
-            byte[] buffer = new byte[1024];
-            is = socket.getInputStream();
-            int bytes;
-            if((bytes=is.read(buffer)) > 0) {
-                byte[] data = new byte[bytes];
-                for (int i=0;i<bytes;i++) {
-                    data[i] = buffer[i];
-                }
-                response = new String(data);
-            }
 
             //把字符数组表示的十六进制转换成double格式
            if (!TextUtils.isEmpty(response)) {
@@ -392,22 +389,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                argTobj = parseHex(response, 34);
                argTonv = parseHex(response, 38);
            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if(os !=null) {
-                    os.close();
-                }
-                if (is != null){
-                    is.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
     }
 
     /*解析十六进制字符串返回double数值*/
@@ -415,7 +396,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return Integer.parseInt(data.substring(i, i + 4), 16);
     }
 
-    private class BluetoothReceiver extends BroadcastReceiver {
+   /* private class BluetoothReceiver extends BroadcastReceiver {
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -446,5 +427,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             }
         }
-    }
+    }*/
 }
