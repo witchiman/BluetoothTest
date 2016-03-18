@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -66,6 +67,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private double resultTobj;
     private double resultTenv;
 
+
     private EditText etDate;
     private EditText etNdvi;
     private EditText etLai;
@@ -87,7 +89,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ArrayAdapter<String> arrayAdapter;
 
     private ProgressBar progressBar;
-    private String response;
+    private String response = "";
 
     private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
@@ -122,11 +124,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.button_save).setOnClickListener(this);
         findViewById(R.id.button_exit).setOnClickListener(this);
 
+
         deviceNames = new ArrayList<String>();
         arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, deviceNames);
         btList.setAdapter(arrayAdapter);
 
-        /*添加连接蓝牙的监听器*/
+        /*添加蓝牙列表的监听器*/
         btList.setOnItemClickListener(this);
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -278,13 +281,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(receiver);
-        if (socket != null) {
-            try {
+        try {
+            if (socket != null) {
                 socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
             }
+        }catch (Exception e) {
+            e.printStackTrace();
         }
+
     }
 
     @Override
@@ -320,10 +324,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void run() {
                 try {
 
-                    socket = device.createRfcommSocketToServiceRecord(MY_UUID);
+                    //socket = device.createRfcommSocketToServiceRecord(MY_UUID);
+                   /* if(socket != null) {
+                        Log.i("MainActivity","The address is " + socket.getRemoteDevice().getAddress());
+                    }*/
                    /*通过反射得到BluetoothSocket*/
-                    // Method method = device.getClass().getMethod("createRfcommSocket",new Class[]{int.class});
-                    //socket = (BluetoothSocket) method.invoke(device,1);
+
+                    Method method = device.getClass().getMethod("createRfcommSocket",new Class[]{int.class});
+                    socket = (BluetoothSocket) method.invoke(device,1);
                     socket.connect();
                     isConnected = true;
                 } catch (IOException e) {
@@ -333,13 +341,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     } catch (IOException e1) {
                         e1.printStackTrace();
                     }
-                }/* catch (NoSuchMethodException e) {
+                } catch (NoSuchMethodException e) {
                    e.printStackTrace();
                } catch (InvocationTargetException e) {
                    e.printStackTrace();
                } catch (IllegalAccessException e) {
                    e.printStackTrace();
-               }*/
+               }
                 if (isConnected) {
                     runOnUiThread(new Runnable() {
                         @Override
@@ -359,28 +367,42 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         InputStream is = null;
         try {
             os = socket.getOutputStream();
-            os.write("010400000003B00B".getBytes("UTF-8"));
-            is = socket.getInputStream();
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
-            String line;
-            while ((line = br.readLine()) != null) {
-                response += line;
+            if(os != null) {
+                os.write("010400000003B00B".getBytes());
+                os.flush();
             }
+            byte[] buffer = new byte[1024];
+            is = socket.getInputStream();
+            int bytes;
+            if((bytes=is.read(buffer)) > 0) {
+                byte[] data = new byte[bytes];
+                for (int i=0;i<bytes;i++) {
+                    data[i] = buffer[i];
+                }
+                response = new String(data);
+            }
+
             //把字符数组表示的十六进制转换成double格式
-            argR670 = parseHex(response, 6);
-            argR690 = parseHex(response, 10);
-            argR735 = parseHex(response, 14);
-            argR808 = parseHex(response, 18);
-            argHeight = parseHex(response, 26);
-            argTobj = parseHex(response, 34);
-            argTonv = parseHex(response, 38);
+           if (!TextUtils.isEmpty(response)) {
+               argR735 = parseHex(response, 6)/2750;
+               argR690 = parseHex(response, 10)/2750;
+               argR670 = parseHex(response, 14)/2600;
+               argR808 = parseHex(response, 18)/2600;
+               argHeight = parseHex(response, 26);
+               argTobj = parseHex(response, 34);
+               argTonv = parseHex(response, 38);
+           }
 
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
             try {
-                os.close();
-                is.close();
+                if(os !=null) {
+                    os.close();
+                }
+                if (is != null){
+                    is.close();
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
