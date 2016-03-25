@@ -111,7 +111,7 @@ public class UtilOnStr {
     }
 
     /*转换字节成十六进制数据*/
-    public static String bytesToHexString(byte[] bytes){
+    public static String parseBytesToHexString(byte[] bytes){
         StringBuilder stringBuilder = new StringBuilder("");
         if (bytes == null || bytes.length <= 0) {
             return null;
@@ -125,5 +125,29 @@ public class UtilOnStr {
             stringBuilder.append(hv);
         }
         return stringBuilder.toString();
+    }
+
+    /*转换十六进制字符成字节数组*/
+    public static byte[] parseHexStringToBytes(String str) {
+        String[] temp1 = str.split("");
+        int length = str.length();
+        String[] temp2 = new String[length/2];
+        for(int j=0;j<length/2;j++) {
+            temp2[j]  = "";
+        }
+        int i = 0;
+        while (i < length) {
+            temp2[i/2]+=temp1[i+1];
+            i++;
+        }
+
+        byte[] bytes = new byte[length/2];
+        i = 0;
+        while (i < length/2) {
+            bytes[i]= (byte) Integer.parseInt(temp2[i],16);
+            i++;
+        }
+        return bytes;
+
     }
 }

@@ -6,7 +6,6 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
@@ -92,8 +91,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ProgressBar progressBar;
     private String response = "";
 
-    //private static final UUID DATA_UUID = UUID.fromString("49535343-fe7d-4ae5-8fa9-9fafd205e455");
-    private static final UUID DATA_UUID = UUID.fromString("0000ffe1-0000-1000-8000-00805f9b34fb");
+    private static final UUID SERVICE_UUID = UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb");
+    private static final UUID CHARACTERISTIC_UUID = UUID.fromString("0000ffe1-0000-1000-8000-00805f9b34fb");
+
+    private static final String request = "010400000003b00b";
 
 
     private BluetoothDevice selectedDevice;
@@ -158,7 +159,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     super.onScanResult(callbackType, result);
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                         BluetoothDevice device = result.getDevice();
-                        System.out.println("the name of device is :" + device.getName() + "|" + device.getAddress());
                         if (!devices.contains(device)) {
                             devices.add(device);
                         }
@@ -266,30 +266,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Toast.makeText(MainActivity.this, "无连接", Toast.LENGTH_SHORT).show();
             return;
         }
-        sendForResult("010400000003B00B");
-        Date date = new Date();
-        SimpleDateFormat format = new SimpleDateFormat("yy年MM月dd日 HH:mm:ss");
-        dateText = format.format(date);
-        etDate.setText(dateText);
-        resultNdvi = compute(REQUEST_NDVI);
-        resultLAI = compute(REQUEST_LAI);
-        resultBio = compute(REQUEST_BIO);
-        resultCHL = compute(REQUEST_CHL);
-        resultN = compute(REQUEST_N);
-        resultHeight = compute(REQUEST_HEIGHT);
-        resultTobj = compute(REQUEST_TOBJ);
-        resultTenv = compute(REQUEST_TENV);
+        sendForResult(request);
 
-        /*计算后得到的结果显示到界面上*/
-        etDate.setText(dateText);
-        etNdvi.setText(resultNdvi + "");
-        etLai.setText(resultLAI + "");
-        etBiomass.setText(resultBio + "");
-        etChl.setText(resultCHL + "");
-        etN.setText(resultN + "");
-        etHeight.setText(resultHeight + "");
-        etTobj.setText(resultTobj + "");
-        etTenv.setText(resultTenv + "");
     }
 
     public void save() {
@@ -367,6 +345,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
             bluetoothGatt = device.connectGatt(MainActivity.this, false, new BluetoothGattCallback() {
+                private boolean isOver = false;
+                private String tempResponse = "";
 
                 @Override
                 public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
@@ -378,7 +358,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 if (isConnected) {
                                     if (!TextUtils.isEmpty(device.getName())) {
                                         setTitle("已连接上" + device.getName());
-                                    }else {
+                                    } else {
                                         setTitle("已经连接上Unknown Device");
                                     }
                                 }
@@ -391,114 +371,126 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
 
                 @Override
+                public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                        System.out.println(gatt.getDevice().getName() + " write " +
+                                " -> " + new String(characteristic.getValue()));
+                    }
+                }
+
+                @Override
+                public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                        String value = UtilOnStr.parseBytesToHexString(characteristic.getValue());
+                        System.out.println(gatt.getDevice().getName() + " read " + " -> " + value);
+                    }
+                }
+
+               /* @Override
                 public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-                    super.onServicesDiscovered(gatt, status);
-                    if (status == BluetoothGatt.GATT_SUCCESS) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                            System.out.println("The size of service is :" +bluetoothGatt.getServices().size());
-                            for (BluetoothGattService service:gatt.getServices()){
-                                int type = service.getType();
-                                System.out.println("-->service type:"+UtilOnStr.getServiceType(type));
-                                System.out.println("-->included service size : " + service.getIncludedServices().size());
-                                System.out.println("-->service uuid : " + service.getUuid());
+                    String TAG="MainActivity";
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                        for (BluetoothGattService gattService : gatt.getServices()) {
+                            //-----Service的字段信息-----//
+                            int type = gattService.getType();
+                            Log.e(TAG,"-->service type:"+UtilOnStr.getServiceType(type));
+                            Log.e(TAG,"-->includedServices size:"+gattService.getIncludedServices().size());
+                            Log.e(TAG,"-->service uuid:"+gattService.getUuid());
 
-                                List<BluetoothGattCharacteristic> gattCharacteristics =service.getCharacteristics();
-                                for (final BluetoothGattCharacteristic  gattCharacteristic: gattCharacteristics) {
-                                    System.out.println("---->char uuid:" + gattCharacteristic.getUuid());
+                            //-----Characteristics的字段信息-----//
+                            List<BluetoothGattCharacteristic> gattCharacteristics =gattService.getCharacteristics();
+                            for (final BluetoothGattCharacteristic  gattCharacteristic: gattCharacteristics) {
+                                Log.e(TAG, "---->char uuid:" + gattCharacteristic.getUuid());
 
-                                    int permission = gattCharacteristic.getPermissions();
-                                    System.out.println("---->char permission:" + UtilOnStr.getCharPermission(permission));
+                                int permission = gattCharacteristic.getPermissions();
+                                Log.e(TAG, "---->char permission:" + UtilOnStr.getCharPermission(permission));
 
-                                    int property = gattCharacteristic.getProperties();
-                                    System.out.println("---->char property:" + UtilOnStr.getCharPropertie(property));
+                                int property = gattCharacteristic.getProperties();
+                                Log.e(TAG, "---->char property:" + UtilOnStr.getCharPropertie(property));
 
-                                    byte[] data = gattCharacteristic.getValue();
-                                    if (data != null && data.length > 0) {
-                                        System.out.println("---->char value:" + new String(data));
-                                    }
+                                byte[] data = gattCharacteristic.getValue();
+                                if (data != null && data.length > 0) {
+                                    Log.e(TAG, "---->char value:" + new String(data));
+                                }
 
-                                    //UUID_KEY_DATA是可以跟蓝牙模块串口通信的Characteristic
-                                    if(gattCharacteristic.getUuid().toString().equals(DATA_UUID)) {
-                                        //测试读取当前Characteristic数据，会触发mOnDataAvailable.onCharacteristicRead()
-                                        handler.postDelayed(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                bluetoothGatt.readCharacteristic(gattCharacteristic);
-                                            }
-                                        }, 500);
-                                    }
 
-                                    //接受Characteristic被写的通知,收到蓝牙模块的数据后会触发mOnDataAvailable.onCharacteristicWrite()
-                                    bluetoothGatt.setCharacteristicNotification(gattCharacteristic, true);
-                                    //设置数据内容
-                                    gattCharacteristic.setValue("send data->\"BlaBlaBla~~~~~~~~~~\"");
-                                    //往蓝牙模块写入数据
-                                    bluetoothGatt.writeCharacteristic(gattCharacteristic);
+                                //-----Descriptors的字段信息-----//
+                                List<BluetoothGattDescriptor> gattDescriptors = gattCharacteristic.getDescriptors();
+                                for (BluetoothGattDescriptor gattDescriptor : gattDescriptors) {
+                                    Log.e(TAG, "-------->desc uuid:" + gattDescriptor.getUuid());
+                                    int descPermission = gattDescriptor.getPermissions();
+                                    Log.e(TAG, "-------->desc permission:" + UtilOnStr.getDescPermission(descPermission));
 
-                                    //-----Descriptors的字段信息-----//
-                                    List<BluetoothGattDescriptor> gattDescriptors = gattCharacteristic.getDescriptors();
-                                    for (BluetoothGattDescriptor gattDescriptor : gattDescriptors) {
-                                        System.out.println("-------->desc uuid:" + gattDescriptor.getUuid());
-                                        int descPermission = gattDescriptor.getPermissions();
-                                        System.out.println("-------->desc permission:" + UtilOnStr.getDescPermission(descPermission));
-
-                                        byte[] desData = gattDescriptor.getValue();
-                                        if (desData != null && desData.length > 0) {
-                                            System.out.println("-------->desc value:" + new String(desData));
-                                        }
+                                    byte[] desData = gattDescriptor.getValue();
+                                    if (desData != null && desData.length > 0) {
+                                        Log.e(TAG, "-------->desc value:" + new String(desData));
                                     }
                                 }
 
                             }
                         }
                     }
-                }
+                }*/
 
                 @Override
-                public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-                    if (status == BluetoothGatt.GATT_SUCCESS) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                            response = UtilOnStr.bytesToHexString(characteristic.getValue());
-                            System.out.println(gatt.getDevice().getName() + " read" + characteristic.getUuid().toString() +
-                                    " -> " + response);
-                        }
-                    }
-                }
-
-                @Override
-                public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+                public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                        System.out.println(gatt.getDevice().getName() + " write "+
-                        " -> " + new String(characteristic.getValue()));
+                        String temp = UtilOnStr.parseBytesToHexString(characteristic.getValue());
+                        tempResponse = tempResponse + temp;
+
+                        if (!isOver) {  //从传感器收集的数据分两次传输，判断是否传输完
+                            isOver = true;
+                            return;
+                        }
+                        response = tempResponse;
+                        System.out.println(gatt.getDevice().getName() + " changed " + " -> " + response);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                showData();
+                                tempResponse = "";
+
+                            }
+                        });
+                        isOver = false;
+
                     }
+                    ;
+
                 }
             });
         }
     }
 
     /*向设备发送并接收返回数据*/
-    private void sendForResult(String request) {
+    private void sendForResult(String value) {
         BluetoothGattService service = null;
         boolean status = false;
 
         /*写入数据*/
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-            service = bluetoothGatt.getService(UUID.fromString("0000fef5-0000-1000-8000-00805f9b34fb"));
+            service = bluetoothGatt.getService(SERVICE_UUID);
             if (service!=null) {
-                characteristic = service.getCharacteristic(UUID.fromString("8082caa8-41a6-4021-91c6-56f9b954cc34"));
+                characteristic = service.getCharacteristic(CHARACTERISTIC_UUID);
                 if (characteristic !=null) {
-                    bluetoothGatt.setCharacteristicNotification(characteristic,true);  //设置characteristic的通知，触发bluetoothGatt.onCharacteristicWrite()事件。
-                    characteristic.setValue(request.getBytes());
+                    bluetoothGatt.setCharacteristicNotification(characteristic, true);  //设置characteristic的通知，触发bluetoothGatt.onCharacteristicWrite()事件。
+                   characteristic.setValue(UtilOnStr.parseHexStringToBytes(value));
                     status = bluetoothGatt.writeCharacteristic(characteristic);
                     if (status) {
-                        System.out.println("写入成功");
+                        System.out.println("characteristic写入成功");
                     }
+                    /*BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
+                    boolean b = descriptor.setValue("010400000003b00b".getBytes());
+                    if (b) {
+                        System.out.println("descriptor 写入成功");
+                    }*/
 
                     handler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                                bluetoothGatt.readCharacteristic(characteristic);
+                               bluetoothGatt.readCharacteristic(characteristic);
+
                             }
                         }
                     },500);
@@ -510,17 +502,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
 
+    }
 
+    private void showData() {
         //把字符数组表示的十六进制转换成double格式
-           if (!TextUtils.isEmpty(response)) {
-               argR735 = UtilOnStr.parseHex(response, 6)/2750;
-               argR690 = UtilOnStr.parseHex(response, 10)/2750;
-               argR670 = UtilOnStr.parseHex(response, 14)/2600;
-               argR808 = UtilOnStr.parseHex(response, 18)/2600;
-               argHeight = UtilOnStr.parseHex(response, 26);
-               argTobj = UtilOnStr.parseHex(response, 34);
-               argTonv = UtilOnStr.parseHex(response, 38);
-           }
+        if (!TextUtils.isEmpty(response)) {
+            argR735 = UtilOnStr.parseHex(response, 6)/2750;
+            argR690 = UtilOnStr.parseHex(response, 10)/2750;
+            argR670 = UtilOnStr.parseHex(response, 14)/2600;
+            argR808 = UtilOnStr.parseHex(response, 18)/2600;
+            argHeight = UtilOnStr.parseHex(response, 26);
+            argTobj = UtilOnStr.parseHex(response, 34);
+            argTonv = UtilOnStr.parseHex(response, 38);
+        }
+        Date date = new Date();
+        SimpleDateFormat format = new SimpleDateFormat("yy年MM月dd日 HH:mm:ss");
+        dateText = format.format(date);
+        etDate.setText(dateText);
+        resultNdvi = compute(REQUEST_NDVI);
+        resultLAI = compute(REQUEST_LAI);
+        resultBio = compute(REQUEST_BIO);
+        resultCHL = compute(REQUEST_CHL);
+        resultN = compute(REQUEST_N);
+        resultHeight = compute(REQUEST_HEIGHT);
+        resultTobj = compute(REQUEST_TOBJ);
+        resultTenv = compute(REQUEST_TENV);
+
+        /*计算后得到的结果显示到界面上*/
+        etDate.setText(dateText);
+        etNdvi.setText(resultNdvi + "");
+        etLai.setText(resultLAI + "");
+        etBiomass.setText(resultBio + "");
+        etChl.setText(resultCHL + "");
+        etN.setText(resultN + "");
+        etHeight.setText(resultHeight + "");
+        etTobj.setText(resultTobj + "");
+        etTenv.setText(resultTenv + "");
+
     }
 
 }
