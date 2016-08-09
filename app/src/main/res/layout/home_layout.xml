@@ -16,7 +16,6 @@
            android:max="200"
            android:progress="0"
            android:layout_gravity="right"
-           android:visibility="invisible"
            android:layout_width="wrap_content"
            android:layout_height="wrap_content" />
        <ListView
@@ -41,6 +40,7 @@
                 android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"
+                android:text="                          "
                 android:layout_marginTop="20dp"
                 android:layout_marginLeft="30dp"
                 android:gravity="center"
@@ -51,7 +51,7 @@
                 android:layout_marginTop="3dp"
                 android:layout_marginLeft="30dp"
                 android:gravity="center"
-                android:text="NDVI"
+                android:text="1270"
                 android:textSize="15sp"
                 android:background="@drawable/img_released" />
             <EditText
@@ -66,7 +66,7 @@
                 android:layout_marginTop="3dp"
                 android:layout_marginLeft="30dp"
                 android:gravity="center"
-                android:text="LAI"
+                android:text="1310"
                 android:textSize="15sp"
                 android:background="@drawable/img_released" />
             <EditText
@@ -81,7 +81,7 @@
                 android:layout_marginTop="3dp"
                 android:layout_marginLeft="30dp"
                 android:gravity="center"
-                android:text="Biomass"
+                android:text="1350"
                 android:textSize="15sp"
                 android:background="@drawable/img_released" />
             <EditText
@@ -96,7 +96,7 @@
                 android:layout_marginTop="3dp"
                 android:layout_marginLeft="30dp"
                 android:gravity="center"
-                android:text="CHL"
+                android:text="1410"
                 android:textSize="15sp"
                 android:background="@drawable/img_released" />
             <EditText
@@ -111,7 +111,7 @@
                 android:layout_marginTop="3dp"
                 android:layout_marginLeft="30dp"
                 android:gravity="center"
-                android:text="N含量"
+                android:text="1450"
                 android:textSize="15sp"
                 android:background="@drawable/img_released" />
             <EditText
@@ -126,8 +126,8 @@
                 android:layout_marginTop="3dp"
                 android:layout_marginLeft="30dp"
                 android:gravity="center"
-                android:text="冠层高度"
-                android:textSize="12sp"
+                android:text="1510"
+                android:textSize="15sp"
                 android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"
@@ -141,8 +141,8 @@
                 android:layout_marginTop="3dp"
                 android:layout_marginLeft="30dp"
                 android:gravity="center"
-                android:text="冠层温度"
-                android:textSize="12sp"
+                android:text="1550"
+                android:textSize="15sp"
                 android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"
@@ -156,8 +156,8 @@
                 android:layout_marginTop="3dp"
                 android:layout_marginLeft="30dp"
                 android:gravity="center"
-                android:text="环境温度"
-                android:textSize="12sp"
+                android:text="1610"
+                android:textSize="15sp"
                 android:background="@drawable/img_released" />
             <EditText
                 android:editable="false"

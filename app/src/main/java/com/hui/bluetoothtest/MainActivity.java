@@ -17,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.View;
@@ -32,6 +33,8 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -48,6 +51,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public static final int REQUEST_HEIGHT = 5;
     public static final int REQUEST_TOBJ = 6;
     public static final int REQUEST_TENV = 7;
+    public static final int OPEN_SUCCESS = 8;
+    private static final String TAG = "MainActivity";
 
     private double argR670;
     private double argR690;
@@ -57,25 +62,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private double argTobj;
     private double argTonv;
     private String dateText;
-    private double resultNdvi;
-    private double resultLAI;
-    private double resultBio;
-    private double resultCHL;
-    private double resultN;
-    private double resultHeight;
-    private double resultTobj;
-    private double resultTenv;
+    private String result1610;
+    private String result1550;
+    private String result1510;
+    private String result1450;
+    private String result1270;
+    private String result1310;
+    private String result1350;
+    private String result1410;
 
 
     private EditText etDate;
-    private EditText etNdvi;
-    private EditText etLai;
-    private EditText etBiomass;
-    private EditText etChl;
-    private EditText etN;
-    private EditText etHeight;
-    private EditText etTobj;
-    private EditText etTenv;
+    private EditText et1610;
+    private EditText et1550;
+    private EditText et1510;
+    private EditText et1450;
+    private EditText et1270;
+    private EditText et1310;
+    private EditText et1350;
+    private EditText et1410;
 
     private ListView btList;
     private FrameLayout connectLayout;
@@ -99,7 +104,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private BluetoothDevice selectedDevice;
     private boolean isConnected = false; //用于标记是否连接成功
-    private Handler handler;
+    private Handler delayedHandler;     //用于延时操作
     private ScanCallback leCallback;
     private boolean isScanning;
     private BluetoothGattCharacteristic characteristic;
@@ -111,17 +116,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.home_layout);
         setTitle("搜索到的设备");
 
-        etDate = (EditText) findViewById(R.id.et_date);
-        etNdvi = (EditText) findViewById(R.id.et_ndvi);
-        etLai = (EditText) findViewById(R.id.et_lai);
-        etBiomass = (EditText) findViewById(R.id.et_biomass);
-        etChl = (EditText) findViewById(R.id.et_chl);
-        etN = (EditText) findViewById(R.id.et_n);
-        etHeight = (EditText) findViewById(R.id.et_height);
-        etTobj = (EditText) findViewById(R.id.et_tobj);
-        etTenv = (EditText) findViewById(R.id.et_tenv);
+        etDate = (EditText) findViewById(R.id.et_date);  //layout的xml懒得改了
+        et1270 = (EditText) findViewById(R.id.et_ndvi);
+        et1310 = (EditText) findViewById(R.id.et_lai);
+        et1350 = (EditText) findViewById(R.id.et_biomass);
+        et1410 = (EditText) findViewById(R.id.et_chl);
+        et1450 = (EditText) findViewById(R.id.et_n);
+        et1510 = (EditText) findViewById(R.id.et_height);
+        et1550 = (EditText) findViewById(R.id.et_tobj);
+        et1610 = (EditText) findViewById(R.id.et_tenv);
         progressBar = (ProgressBar) findViewById(R.id.progressbar);
-        handler = new Handler();
+        delayedHandler = new Handler();
 
         btList = (ListView) findViewById(R.id.bt_list);
         dataLayout = (TableLayout) findViewById(R.id.data_layout);
@@ -154,6 +159,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             leCallback = new ScanCallback() {
+
                 @Override
                 public void onScanResult(int callbackType, ScanResult result) {
                     super.onScanResult(callbackType, result);
@@ -173,16 +179,38 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             };
         }
-        /*搜索蓝牙设备*/
-        progressBar.setVisibility(View.VISIBLE);
-        handler.postDelayed(new Runnable() {
+
+        new Thread(new Runnable() {
             @Override
             public void run() {
-                scanBluetooth();
+                while(true) {//循环判断蓝牙是否开启，耗时操作放到子线程里
+                   if (bluetoothAdapter.isEnabled()) {
+                       Message msg = Message.obtain();
+                       msg.what = OPEN_SUCCESS;
+                       openLEHandler.sendMessage(msg);
+                       break;
+                   }
+                }
             }
-        },1000);
+        }).start();
+
     }
 
+    private Handler openLEHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case OPEN_SUCCESS:
+                    scanBluetooth();         //蓝牙开启成功，开始搜索周围的设备
+                    progressBar.setVisibility(View.VISIBLE);
+                    //Log.d(TAG, "handleMessage: 开始搜索");
+                    break;
+                default:
+                    super.handleMessage(msg);
+                    break;
+            }
+        }
+    };
 
     @Override
     public void onClick(View v) {
@@ -205,37 +233,53 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     /*通过公式计算各个参数，返回结果*/
-    private double compute(int requestCode) {
+    private String compute(int requestCode) {
+        DecimalFormat df = new DecimalFormat("0.###");
         switch (requestCode) {
             case REQUEST_NDVI:
-                return ((argR808 - argR670) / (argR808 + argR670));
+                double value_ndvi = ((argR808 - argR670) / (argR808 + argR670));
+                return df.format(value_ndvi);
             case REQUEST_LAI:
-                return 0.202 * Math.exp(4.535 * ((argR808 - argR670) / Math.sqrt(argR808 - argR670)));
+                double value_lai = 0.202 * Math.exp(4.535 * ((argR808 - argR670) /
+                        Math.sqrt(argR808 - argR670)));
+                return df.format(value_lai) ;
             case REQUEST_BIO:
-                return 54.81 * resultLAI + 42.39;
+                double value_bio = 54.81 * (0.202 * Math.exp(4.535 * ((argR808 - argR670) /
+                        Math.sqrt(argR808 - argR670)))) + 42.39;
+                return df.format(value_bio);
             case REQUEST_CHL:
-                return -668.319 + 12.652 * argR808 / argR670 - 5675.885 * (argR735 / argR690 - 1) +
-                        2316.909 * (argR735 - argR690) / (argR690 - argR670);
+                double value_chl = -668.319 + 12.652 * argR808 / argR670 - 5675.885 *
+                        (argR735 / argR690 - 1) + 2316.909 * (argR735 - argR690) / (argR690 - argR670);
+                return df.format(value_chl);
             case REQUEST_N:
-                return 242.2 * Math.pow(resultCHL, 0.457);
+                double value_n = 242.2 * Math.pow(-668.319 + 12.652 * argR808 / argR670 - 5675.885 *
+                        (argR735 / argR690 - 1) + 2316.909 * (argR735 - argR690) /
+                        (argR690 - argR670), 0.457);
+                if (Double.isNaN(value_n)) {
+                    return "0.000";
+                }
+                return df.format(value_n);
             case REQUEST_HEIGHT:
                 double x = argHeight * 2.5 / 4096;
-                return -36.64 * Math.pow(x, 3) + 207.71 * Math.pow(x, 2) - 376.1 * x + 272.56;
+                double value_h = -36.64 * Math.pow(x, 3) + 207.71 * Math.pow(x, 2) - 376.1 * x + 272.56;
+                return df.format(value_h);
             case REQUEST_TOBJ:
-                return argTobj / 1000;
+                double value_tobj = argTobj / 1000;
+                return df.format(value_tobj);
             case REQUEST_TENV:
-                return argTonv / 1000;
+                double value_tenv = argTonv / 1000;
+                return df.format(value_tenv);
             default:
                 break;
         }
-        return 0;
+        return null;
     }
 
     /*对蓝牙设备进行扫描*/
     private void scanBluetooth() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             scanner = bluetoothAdapter.getBluetoothLeScanner();
-            handler.postDelayed(new Runnable() {
+            delayedHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     if (bluetoothAdapter.isEnabled()&&isScanning) {
@@ -275,7 +319,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Toast.makeText(MainActivity.this, "无数据", Toast.LENGTH_SHORT).show();
             return;
         }
-        File file = new File(Environment.getExternalStorageDirectory(), "data_collection.txt");
+        File file = new File(Environment.getExternalStorageDirectory(), "soil data.txt");
         try {
             if (!file.exists()) {
                 file.createNewFile();
@@ -284,14 +328,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             BufferedWriter bw = new BufferedWriter(fw);
             bw.write("-----------------------------" + "\n");
             bw.write("日期:" + dateText + "\n");
-            bw.write("Ndvi:" + resultNdvi + "\n");
-            bw.write("LAI:" + resultLAI + "\n");
-            bw.write("Biomass:" + resultBio + "\n");
-            bw.write("CHL:" + resultCHL + "\n");
-            bw.write("N含量:" + resultN + "\n");
-            bw.write("冠层高度:" + resultHeight + "\n");
-            bw.write("目标温度:" + resultTobj + "\n");
-            bw.write("环境温度:" + resultTenv + "\n");
+            bw.write("1270:" + result1270 + "\n");
+            bw.write("1310:" + result1310 + "\n");
+            bw.write("1350:" + result1350 + "\n");
+            bw.write("1410:" + result1410 + "\n");
+            bw.write("1450:" + result1450 + "\n");
+            bw.write("1510:" + result1510 + "\n");
+            bw.write("1550:" + result1550 + "\n");
+            bw.write("1610:" + result1610 + "\n");
             bw.flush();
             Toast.makeText(getApplicationContext(), "Save successfully", Toast.LENGTH_SHORT).show();
             bw.close();
@@ -474,7 +518,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 characteristic = service.getCharacteristic(CHARACTERISTIC_UUID);
                 if (characteristic !=null) {
                     bluetoothGatt.setCharacteristicNotification(characteristic, true);  //设置characteristic的通知，触发bluetoothGatt.onCharacteristicWrite()事件。
-                   characteristic.setValue(UtilOnStr.parseHexStringToBytes(value));
+                    characteristic.setValue(UtilOnStr.parseHexStringToBytes(value));
                     status = bluetoothGatt.writeCharacteristic(characteristic);
                     if (status) {
                         System.out.println("characteristic写入成功");
@@ -485,7 +529,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         System.out.println("descriptor 写入成功");
                     }*/
 
-                    handler.postDelayed(new Runnable() {
+                    delayedHandler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
@@ -507,28 +551,39 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void showData() {
         //把字符数组表示的十六进制转换成double格式
         if (!TextUtils.isEmpty(response)) {
-            argR735 = UtilOnStr.parseHex(response, 6)/2750;
+           /* argR735 = UtilOnStr.parseHex(response, 6)/2750;
             argR690 = UtilOnStr.parseHex(response, 10)/2750;
             argR670 = UtilOnStr.parseHex(response, 14)/2600;
             argR808 = UtilOnStr.parseHex(response, 18)/2600;
             argHeight = UtilOnStr.parseHex(response, 26);
             argTobj = UtilOnStr.parseHex(response, 34);
-            argTonv = UtilOnStr.parseHex(response, 38);
+            argTonv = UtilOnStr.parseHex(response, 38);*/
+
+            /*显示改需求后的返回数据,ADC*/
+            result1610 = convertADCToVoltage(UtilOnStr.parseHex(response, 6));
+            result1550 = convertADCToVoltage(UtilOnStr.parseHex(response, 10));
+            result1510 = convertADCToVoltage(UtilOnStr.parseHex(response, 14));
+            result1450 = convertADCToVoltage(UtilOnStr.parseHex(response, 18));
+            result1270 = convertADCToVoltage(UtilOnStr.parseHex(response, 22));
+            result1310 = convertADCToVoltage(UtilOnStr.parseHex(response, 26));
+            result1350  = convertADCToVoltage(UtilOnStr.parseHex(response, 30));
+            result1410 = convertADCToVoltage(UtilOnStr.parseHex(response, 34));
+
         }
         Date date = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yy年MM月dd日 HH:mm:ss");
         dateText = format.format(date);
-        etDate.setText(dateText);
-        resultNdvi = compute(REQUEST_NDVI);
+
+           /*resultNdvi = compute(REQUEST_NDVI);
         resultLAI = compute(REQUEST_LAI);
         resultBio = compute(REQUEST_BIO);
         resultCHL = compute(REQUEST_CHL);
         resultN = compute(REQUEST_N);
         resultHeight = compute(REQUEST_HEIGHT);
         resultTobj = compute(REQUEST_TOBJ);
-        resultTenv = compute(REQUEST_TENV);
-
-        /*计算后得到的结果显示到界面上*/
+        resultTenv = compute(REQUEST_TENV);*/
+        /*
+        *//*计算后得到的结果显示到界面上*//*
         etDate.setText(dateText);
         etNdvi.setText(resultNdvi + "");
         etLai.setText(resultLAI + "");
@@ -537,8 +592,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         etN.setText(resultN + "");
         etHeight.setText(resultHeight + "");
         etTobj.setText(resultTobj + "");
-        etTenv.setText(resultTenv + "");
+        etTenv.setText(resultTenv + "");*/
 
+        etDate.setText(dateText);
+        et1270.setText(result1270);
+        et1310.setText(result1310);
+        et1350.setText(result1350);
+        et1410.setText(result1410);
+        et1450.setText(result1450);
+        et1510.setText(result1510);
+        et1550.setText(result1550);
+        et1610.setText(result1610);
+
+
+    }
+
+    /**
+     *
+     * @param adc 通过返回的信息截取得到ADC
+     * @return   换算成电压值返回,保留三位小数
+     */
+    private String convertADCToVoltage(double adc) {
+        double temp = adc*2.5/4096;
+        BigDecimal b = new BigDecimal(temp);
+        double d = b.setScale(3, BigDecimal.ROUND_HALF_UP).doubleValue(); //设置保留三位小数
+        String result = String.valueOf(d);
+        return result;
     }
 
 }
