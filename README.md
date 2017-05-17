@@ -1,8 +1,6 @@
 # BluetoothTest
 
-A easy app using to collect and process data.
-
-该软件通过蓝牙4.0连接到指定的传感器收集数据到手机并进行处理。
+该应用通过蓝牙4.0连接到指定的激光传感器收集数据到手机并进行处理。
 
 * 基于Android API 23开发
 
